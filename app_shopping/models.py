@@ -15,7 +15,7 @@ class Admin(BaseModel):
     last_name = models.CharField( max_length=50, default= "")
     email = models.EmailField( max_length=50, unique= True)
     phone = models.CharField( max_length=20,  default= "")
-    image = models.ImageField( upload_to="Admin_image", height_field=None, width_field=None, max_length=None)
+    image = models.ImageField( upload_to="AdminImage/", height_field=None, width_field=None, max_length=None, default="AdminImage/dummyadmin.png")
     password = models.TextField(null= False)
     Otp = models.IntegerField(default=0)
     OtpCount = models.IntegerField(default=0)
@@ -57,7 +57,7 @@ class Seller(BaseModel):
     email = models.EmailField( max_length=254, unique= True)
     phone = models.CharField( max_length=15, default="")
     shop_name = models.CharField( max_length=50, unique=True)
-    shop_image = models.ImageField( upload_to="Seller_image", height_field=None, width_field=None, max_length=None)
+    shop_image = models.ImageField( upload_to="SellerImage/", height_field=None, width_field=None, max_length=None, default="SellerImage/dummyseller.png")
     description = models.TextField(default="")
     shop_address = models.TextField(default="")
     shop_city = models.CharField( max_length=50, default= "" )
@@ -86,15 +86,15 @@ class Product(BaseModel):
     sub_category = models.ForeignKey(Product_SubCategory, on_delete=models.CASCADE, blank= True, null=True)
     title = models.CharField( max_length=50, default= "")
     description = models.TextField(default="")
-    image = models.ImageField( upload_to="Product_images", height_field=None, width_field=None, max_length=None, default= None)
+    image = models.ImageField( upload_to="ProductImages/", height_field=None, width_field=None, max_length=None, default= None, null= True, blank=True)
     size = models.CharField( max_length=50, default="")
     color = models.CharField( max_length=50, default="")
     price = models.DecimalField( max_digits=6, decimal_places=2, default= 0)
     stock_quantity = models.IntegerField(default=0)
     product_available = models.BooleanField(default=False)
     discount_price = models.DecimalField( max_digits=5, decimal_places=2, default=0)
-    discount_startdate = models.DateTimeField( auto_now=False, auto_now_add=False, default= None)
-    discount_enddate = models.DateTimeField( auto_now=False, auto_now_add=False, default= None)
+    discount_startdate = models.DateTimeField( auto_now=False, auto_now_add=False, default= None , null= True, blank=True)
+    discount_enddate = models.DateTimeField( auto_now=False, auto_now_add=False, default= None, null= True, blank=True)
     discount_available = models.BooleanField(default= False)
     admin_allow_status = models.BooleanField(default= True)
     
@@ -103,7 +103,7 @@ class Product(BaseModel):
     
 class ProductImages(BaseModel):
     product = models.ForeignKey(Product, on_delete=models.CASCADE,  blank= True, null=True)
-    image = models.ImageField( upload_to="Product_images", height_field=None, width_field=None, max_length=None)
+    image = models.ImageField( upload_to="ProductImages/", height_field=None, width_field=None, max_length=None, default= None, null= True, blank=True)
     
     def __str__(self):
         return f"{self.product.title} - {str(self.image.url)}"    
@@ -112,8 +112,8 @@ class Sale(BaseModel):
     seller = models.ForeignKey(Seller, on_delete=models.CASCADE,  blank= True, null=True)
     sub_category = models.ForeignKey(Product_SubCategory, on_delete=models.CASCADE, blank= True, null=True)
     sale_percent = models.IntegerField(default=0, validators= [MinValueValidator(0), MaxValueValidator(100)] , help_text="Enter the sale percentage")
-    sale_startdate = models.DateTimeField( auto_now=False, auto_now_add=False, default=None)
-    sale_enddate = models.DateTimeField( auto_now=False, auto_now_add=False, default=None)
+    sale_startdate = models.DateTimeField( auto_now=False, auto_now_add=False, default=None, null= True, blank=True)
+    sale_enddate = models.DateTimeField( auto_now=False, auto_now_add=False, default=None, null= True, blank=True)
     sale_available = models.BooleanField(default=False)
     admin_allow_status = models.BooleanField(default=False)
     
@@ -122,7 +122,7 @@ class Customer(BaseModel):
     last_name = models.CharField( max_length=50, default= "")
     email = models.EmailField( max_length=254, unique=True)
     phone = models.CharField( max_length=15, default="")
-    profile_image = models.ImageField( upload_to="Customer_image", height_field=None, width_field=None, max_length=None)
+    profile_image = models.ImageField( upload_to="CustomerImage/", height_field=None, width_field=None, max_length=None, default="CustomerImage/dummycustomer.png")
     password = models.TextField(null= False)
     Otp = models.IntegerField(default=0)
     OtpCount = models.IntegerField(default=0)
@@ -180,7 +180,7 @@ class OrderDetail(BaseModel):
     total_amount = models.DecimalField( max_digits=5, decimal_places=2, default="")
     size = models.CharField( max_length=50, default="")
     color = models.CharField( max_length=50 , default="")
-    ship_date = models.DateTimeField( auto_now=False, auto_now_add=False, default= None)
+    ship_date = models.DateTimeField( auto_now=False, auto_now_add=False, default= None, null= True, blank=True)
     ship_status = models.CharField(choices= shipstatus_choice, max_length=50, default="")
     order_approve = models.BooleanField(default=False)
     
