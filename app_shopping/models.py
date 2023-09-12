@@ -3,66 +3,37 @@ import uuid
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 # Create your models here.
-
-
 class BaseModel(models.Model):
     id = models.UUIDField(default= uuid.uuid4, editable= False, auto_created=True, primary_key= True )
-    created_at = models.DateTimeField( auto_now_add=True , null= True)
-    updated_at = models.DateTimeField( auto_now= True, null= True)
+    created_at = models.DateTimeField( auto_now_add=True , null= True, blank=True)
+    updated_at = models.DateTimeField( auto_now= True, null= True, blank= True)
     class Meta:
         abstract = True
-
+        
 class Admin(BaseModel):
-    admin_role =(
-        ("superadmin", "superadmin"),
-        ("manager", "manager"),
-    )
-    f_name = models.CharField( max_length=50 , default= "")
-    l_name = models.CharField( max_length=50, default= "")
-    email = models.EmailField( max_length=50, default="" ,unique= True)
+    first_name = models.CharField( max_length=50 , default= "")
+    last_name = models.CharField( max_length=50, default= "")
+    email = models.EmailField( max_length=50, unique= True)
     phone = models.CharField( max_length=20,  default= "")
+    image = models.ImageField( upload_to="Admin_image", height_field=None, width_field=None, max_length=None)
     password = models.TextField(null= False)
-    role = models.CharField(choices= admin_role, max_length=50, default= "superadmin")
+    Otp = models.IntegerField(default=0)
+    OtpCount = models.IntegerField(default=0)
+    OtpStatus = models.BooleanField(default=False)
+    no_of_attempts_allowed = models.IntegerField(default=3)
+    no_of_wrong_attempts = models.IntegerField(default=0)
+    account_status = models.BooleanField(default=True)
     
     def __str__(self):
         return f"{self.f_name} {self.l_name}"
-    
-class Seller(BaseModel):
-    f_name = models.CharField( max_length=50, default= "")
-    l_name = models.CharField( max_length=50, default= "")
-    email = models.EmailField( max_length=254, default="", unique= True)
-    phone = models.CharField( max_length=15, default="")
-    profile_name = models.CharField( max_length=50, default="", unique=True)
-    profile_image = models.ImageField( upload_to="Seller_image", height_field=None, width_field=None, max_length=None)
-    description = models.TextField()
-    seller_address = models.TextField()
-    seller_city = models.CharField( max_length=50, default= "" )
-    password = models.TextField(null= False)
-    status = models.BooleanField(default= False)
-    
-    def __str__(self):
-        return self.email
-    
-class Customer(BaseModel):
-    f_name = models.CharField( max_length=50, default="")
-    l_name = models.CharField( max_length=50, default= "")
-    email = models.EmailField( max_length=254, unique=True, default="")
-    phone = models.CharField( max_length=15, default="")
-    profile_image = models.ImageField( upload_to="Customer_image", height_field=None, width_field=None, max_length=None)
-    password = models.TextField(null= False)
-    status = models.BooleanField(default=True)
-    
-    def __str__(self):
-        return self.email
 
-class Address(BaseModel):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
-    title = models.CharField( max_length=20, default= "")
-    address = models.TextField()
-    city = models.CharField( max_length=50 , default="")
+class AdminWhitelistToken (models.Model):
+    admin = models.ForeignKey(Admin, on_delete=models.CASCADE, blank= True, null=True)
+    token = models.TextField(default="")
+    created_at = models.DateTimeField( auto_now_add=True, blank=True, null= True)
     
     def __str__(self):
-        return f"{self.title} - {self.customer}"
+        return self.admin
     
 class ProductCategory(BaseModel):
     name = models.CharField( max_length=50, default="")
@@ -72,12 +43,43 @@ class ProductCategory(BaseModel):
         return self.name
     
 class Product_SubCategory(BaseModel):
-    category = models.ForeignKey(ProductCategory, on_delete=models.CASCADE)
+    category = models.ForeignKey(ProductCategory, on_delete=models.CASCADE, blank=True, null= True)
     name = models.CharField( max_length=50, default="")
     description = models.TextField()
     
     def __str__(self):
         return self.name
+
+    
+class Seller(BaseModel):
+    first_name = models.CharField( max_length=50, default= "")
+    last_name = models.CharField( max_length=50, default= "")
+    email = models.EmailField( max_length=254, unique= True)
+    phone = models.CharField( max_length=15, default="")
+    shop_name = models.CharField( max_length=50, unique=True)
+    shop_image = models.ImageField( upload_to="Seller_image", height_field=None, width_field=None, max_length=None)
+    description = models.TextField()
+    shop_address = models.TextField()
+    shop_city = models.CharField( max_length=50, default= "" )
+    password = models.TextField(null= False)
+    Otp = models.IntegerField(default=0)
+    OtpCount = models.IntegerField(default=0)
+    OtpStatus = models.BooleanField(default=False)
+    no_of_attempts_allowed = models.IntegerField(default=3)
+    no_of_wrong_attempts = models.IntegerField(default=0)
+    account_status = models.BooleanField(default=True)
+    admin_allow_status = models.BooleanField(default= False)
+    
+    def __str__(self):
+        return self.email
+
+class SellerWhitelistToken(models.Model):
+    seller = models.ForeignKey(Seller, on_delete=models.CASCADE, blank= True, null=True)
+    token = models.TextField(default="")
+    created_at = models.DateTimeField( auto_now_add=False, blank= True, null=True)
+    
+    def __str__(self) :
+        return self.seller
     
 class Product(BaseModel):
     seller = models.ForeignKey(Seller, on_delete=models.CASCADE)
@@ -94,7 +96,7 @@ class Product(BaseModel):
     discount_startdate = models.DateTimeField( auto_now=False, auto_now_add=False, default= None)
     discount_enddate = models.DateTimeField( auto_now=False, auto_now_add=False, default= None)
     discount_available = models.BooleanField(default= False)
-    status = models.BooleanField(default= False)
+    admin_allow_status = models.BooleanField(default= True)
     
     def __str__(self):
         return f"{self.title} - {self.seller.email}"
@@ -104,7 +106,51 @@ class ProductImages(BaseModel):
     image = models.ImageField( upload_to="Product_images", height_field=None, width_field=None, max_length=None)
     
     def __str__(self):
-        return f"{self.product.title} - {str(self.image.url)}"
+        return f"{self.product.title} - {str(self.image.url)}"    
+    
+class Sale(BaseModel):
+    seller = models.ForeignKey(Seller, on_delete=models.CASCADE)
+    sub_category = models.ForeignKey(Product_SubCategory, on_delete=models.CASCADE)
+    sale_percent = models.IntegerField(default=0, validators= [MinValueValidator(0), MaxValueValidator(100)] , help_text="Enter the sale percentage")
+    sale_startdate = models.DateTimeField( auto_now=False, auto_now_add=False, default=None)
+    sale_enddate = models.DateTimeField( auto_now=False, auto_now_add=False, default=None)
+    sale_available = models.BooleanField(default=False)
+    admin_allow_status = models.BooleanField(default=False)
+    
+class Customer(BaseModel):
+    first_name = models.CharField( max_length=50, default="")
+    last_name = models.CharField( max_length=50, default= "")
+    email = models.EmailField( max_length=254, unique=True)
+    phone = models.CharField( max_length=15, default="")
+    profile_image = models.ImageField( upload_to="Customer_image", height_field=None, width_field=None, max_length=None)
+    password = models.TextField(null= False)
+    Otp = models.IntegerField(default=0)
+    OtpCount = models.IntegerField(default=0)
+    OtpStatus = models.BooleanField(default=False)
+    no_of_attempts_allowed = models.IntegerField(default=3)
+    no_of_wrong_attempts = models.IntegerField(default=0)
+    status = models.BooleanField(default=True)
+    admin_allow_status = models.BooleanField(default=True)
+    
+    def __str__(self):
+        return self.email
+
+class CustomerWhitelistToken(models.Model):
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, blank=True, null =True)
+    token = models.TextField(default="")
+    created_at = models.DateTimeField( auto_now_add=False, null=True, blank=True)
+
+    def __str__(self):
+        return self.customer
+
+class Address(BaseModel):
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    title = models.CharField( max_length=20, default= "")
+    address = models.TextField()
+    city = models.CharField( max_length=50 , default="")
+    
+    def __str__(self):
+        return f"{self.title} - {self.customer}"
     
 class Orders(BaseModel):
     payment_choices = [
@@ -156,11 +202,3 @@ class Likes (BaseModel):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     like_status = models.BooleanField(default= False)
 
-class Sale(BaseModel):
-    seller = models.ForeignKey(Seller, on_delete=models.CASCADE)
-    sub_category = models.ForeignKey(Product_SubCategory, on_delete=models.CASCADE)
-    sale_percent = models.IntegerField(default=0, validators= [MinValueValidator(0), MaxValueValidator(100)] , help_text="Enter the sale percentage")
-    sale_startdate = models.DateTimeField( auto_now=False, auto_now_add=False, default=None)
-    sale_enddate = models.DateTimeField( auto_now=False, auto_now_add=False, default=None)
-    sale_available = models.BooleanField(default=False)
-    status = models.BooleanField(default=False)
