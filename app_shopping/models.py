@@ -9,6 +9,10 @@ class BaseModel(models.Model):
     updated_at = models.DateTimeField( auto_now= True, null= True, blank= True)
     class Meta:
         abstract = True
+    
+    def __str__(self):
+        return str(self.id)
+    
         
 class Admin(BaseModel):
     first_name = models.CharField( max_length=50 , default= "")
@@ -33,7 +37,7 @@ class AdminWhitelistToken (models.Model):
     created_at = models.DateTimeField( auto_now_add=True, blank=True, null= True)
     
     def __str__(self):
-        return self.admin
+        return str(self.admin)
     
 class ProductCategory(BaseModel):
     name = models.CharField( max_length=50, default="")

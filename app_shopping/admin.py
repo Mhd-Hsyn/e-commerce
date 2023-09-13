@@ -1,8 +1,11 @@
 from django.contrib import admin
 from .models import *
 # Register your models here.
+class Adminclass (admin.ModelAdmin):
+    list_display = ["id", "email"]
 
-admin.site.register(Admin)
+admin.site.register(Admin,Adminclass)
+
 admin.site.register(AdminWhitelistToken)
 admin.site.register(ProductCategory)
 admin.site.register(Product_SubCategory)
