@@ -9,13 +9,17 @@ class BaseModel(models.Model):
     updated_at = models.DateTimeField( auto_now= True, null= True, blank= True)
     class Meta:
         abstract = True
+    
+    def __str__(self):
+        return str(self.id)
+    
         
 class Admin(BaseModel):
     first_name = models.CharField( max_length=50 , default= "")
     last_name = models.CharField( max_length=50, default= "")
     email = models.EmailField( max_length=50, unique= True)
     phone = models.CharField( max_length=20,  default= "")
-    image = models.ImageField( upload_to="Admin_image", height_field=None, width_field=None, max_length=None)
+    image = models.ImageField( upload_to="AdminImage/", height_field=None, width_field=None, max_length=None, default="AdminImage/dummyadmin.png")
     password = models.TextField(null= False)
     Otp = models.IntegerField(default=0)
     OtpCount = models.IntegerField(default=0)
@@ -25,7 +29,7 @@ class Admin(BaseModel):
     account_status = models.BooleanField(default=True)
     
     def __str__(self):
-        return f"{self.f_name} {self.l_name}"
+        return f"{self.first_name} {self.last_name}"
 
 class AdminWhitelistToken (models.Model):
     admin = models.ForeignKey(Admin, on_delete=models.CASCADE, blank= True, null=True)
@@ -33,11 +37,11 @@ class AdminWhitelistToken (models.Model):
     created_at = models.DateTimeField( auto_now_add=True, blank=True, null= True)
     
     def __str__(self):
-        return self.admin
+        return str(self.admin)
     
 class ProductCategory(BaseModel):
     name = models.CharField( max_length=50, default="")
-    description = models.TextField()
+    description = models.TextField(default="")
     
     def __str__(self):
         return self.name
@@ -45,7 +49,7 @@ class ProductCategory(BaseModel):
 class Product_SubCategory(BaseModel):
     category = models.ForeignKey(ProductCategory, on_delete=models.CASCADE, blank=True, null= True)
     name = models.CharField( max_length=50, default="")
-    description = models.TextField()
+    description = models.TextField(default="")
     
     def __str__(self):
         return self.name
@@ -57,9 +61,9 @@ class Seller(BaseModel):
     email = models.EmailField( max_length=254, unique= True)
     phone = models.CharField( max_length=15, default="")
     shop_name = models.CharField( max_length=50, unique=True)
-    shop_image = models.ImageField( upload_to="Seller_image", height_field=None, width_field=None, max_length=None)
-    description = models.TextField()
-    shop_address = models.TextField()
+    shop_image = models.ImageField( upload_to="SellerImage/", height_field=None, width_field=None, max_length=None, default="SellerImage/dummyseller.png")
+    description = models.TextField(default="")
+    shop_address = models.TextField(default="")
     shop_city = models.CharField( max_length=50, default= "" )
     password = models.TextField(null= False)
     Otp = models.IntegerField(default=0)
@@ -82,19 +86,19 @@ class SellerWhitelistToken(models.Model):
         return self.seller
     
 class Product(BaseModel):
-    seller = models.ForeignKey(Seller, on_delete=models.CASCADE)
-    sub_category = models.ForeignKey(Product_SubCategory, on_delete=models.CASCADE)
+    seller = models.ForeignKey(Seller, on_delete=models.CASCADE,  blank= True, null=True)
+    sub_category = models.ForeignKey(Product_SubCategory, on_delete=models.CASCADE, blank= True, null=True)
     title = models.CharField( max_length=50, default= "")
-    description = models.TextField()
-    image = models.ImageField( upload_to="Product_images", height_field=None, width_field=None, max_length=None, default= None)
-    size = models.CharField( max_length=50)
-    color = models.CharField( max_length=50)
-    price = models.DecimalField( max_digits=6, decimal_places=2)
-    stock_quantity = models.IntegerField()
+    description = models.TextField(default="")
+    image = models.ImageField( upload_to="ProductImages/", height_field=None, width_field=None, max_length=None, default= None, null= True, blank=True)
+    size = models.CharField( max_length=50, default="")
+    color = models.CharField( max_length=50, default="")
+    price = models.DecimalField( max_digits=6, decimal_places=2, default= 0)
+    stock_quantity = models.IntegerField(default=0)
     product_available = models.BooleanField(default=False)
-    discount_price = models.DecimalField( max_digits=5, decimal_places=2)
-    discount_startdate = models.DateTimeField( auto_now=False, auto_now_add=False, default= None)
-    discount_enddate = models.DateTimeField( auto_now=False, auto_now_add=False, default= None)
+    discount_price = models.DecimalField( max_digits=5, decimal_places=2, default=0)
+    discount_startdate = models.DateTimeField( auto_now=False, auto_now_add=False, default= None , null= True, blank=True)
+    discount_enddate = models.DateTimeField( auto_now=False, auto_now_add=False, default= None, null= True, blank=True)
     discount_available = models.BooleanField(default= False)
     admin_allow_status = models.BooleanField(default= True)
     
@@ -102,18 +106,18 @@ class Product(BaseModel):
         return f"{self.title} - {self.seller.email}"
     
 class ProductImages(BaseModel):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    image = models.ImageField( upload_to="Product_images", height_field=None, width_field=None, max_length=None)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE,  blank= True, null=True)
+    image = models.ImageField( upload_to="ProductImages/", height_field=None, width_field=None, max_length=None, default= None, null= True, blank=True)
     
     def __str__(self):
         return f"{self.product.title} - {str(self.image.url)}"    
     
 class Sale(BaseModel):
-    seller = models.ForeignKey(Seller, on_delete=models.CASCADE)
-    sub_category = models.ForeignKey(Product_SubCategory, on_delete=models.CASCADE)
+    seller = models.ForeignKey(Seller, on_delete=models.CASCADE,  blank= True, null=True)
+    sub_category = models.ForeignKey(Product_SubCategory, on_delete=models.CASCADE, blank= True, null=True)
     sale_percent = models.IntegerField(default=0, validators= [MinValueValidator(0), MaxValueValidator(100)] , help_text="Enter the sale percentage")
-    sale_startdate = models.DateTimeField( auto_now=False, auto_now_add=False, default=None)
-    sale_enddate = models.DateTimeField( auto_now=False, auto_now_add=False, default=None)
+    sale_startdate = models.DateTimeField( auto_now=False, auto_now_add=False, default=None, null= True, blank=True)
+    sale_enddate = models.DateTimeField( auto_now=False, auto_now_add=False, default=None, null= True, blank=True)
     sale_available = models.BooleanField(default=False)
     admin_allow_status = models.BooleanField(default=False)
     
@@ -122,7 +126,7 @@ class Customer(BaseModel):
     last_name = models.CharField( max_length=50, default= "")
     email = models.EmailField( max_length=254, unique=True)
     phone = models.CharField( max_length=15, default="")
-    profile_image = models.ImageField( upload_to="Customer_image", height_field=None, width_field=None, max_length=None)
+    profile_image = models.ImageField( upload_to="CustomerImage/", height_field=None, width_field=None, max_length=None, default="CustomerImage/dummycustomer.png")
     password = models.TextField(null= False)
     Otp = models.IntegerField(default=0)
     OtpCount = models.IntegerField(default=0)
@@ -144,9 +148,9 @@ class CustomerWhitelistToken(models.Model):
         return self.customer
 
 class Address(BaseModel):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE,  blank= True, null=True)
     title = models.CharField( max_length=20, default= "")
-    address = models.TextField()
+    address = models.TextField(default="")
     city = models.CharField( max_length=50 , default="")
     
     def __str__(self):
@@ -157,12 +161,12 @@ class Orders(BaseModel):
         ("paypal", "paypal"),
         ("card", "card")
     ]
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
-    address = models.ForeignKey(Address, on_delete=models.CASCADE)
-    final_amount = models.DecimalField( max_digits=10, decimal_places=2)
-    payment_method = models.CharField( max_length=50, choices= payment_choices)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE,  blank= True, null=True)
+    address = models.ForeignKey(Address, on_delete=models.CASCADE,  blank= True, null=True)
+    final_amount = models.DecimalField( max_digits=10, decimal_places=2, default="")
+    payment_method = models.CharField( max_length=50, choices= payment_choices, default="")
     payment_status = models.BooleanField(default= False)
-    payment_date = models.DateTimeField( auto_now=False, auto_now_add=False)  # payment date added only when payment status becomes True
+    payment_date = models.DateTimeField( auto_now=False, auto_now_add=False, blank=True, null=True)  # payment date added only when payment status becomes True
     
     def __str__(self) :
         return f"{self.payment_status} - {self.customer}"
@@ -173,32 +177,32 @@ class OrderDetail(BaseModel):
         ("shipped", "shipped"),
         ("delivered", "delivered")
     ]
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    order = models.ForeignKey(Orders, on_delete=models.CASCADE)
-    quantity = models.IntegerField(default=1)
-    discounted_price = models.DecimalField( max_digits=5, decimal_places=2)
-    total_amount = models.DecimalField( max_digits=5, decimal_places=2)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE,  blank= True, null=True)
+    order = models.ForeignKey(Orders, on_delete=models.CASCADE,  blank= True, null=True)
+    quantity = models.IntegerField(default=0)
+    discounted_price = models.DecimalField( max_digits=5, decimal_places=2, default="" )
+    total_amount = models.DecimalField( max_digits=5, decimal_places=2, default="")
     size = models.CharField( max_length=50, default="")
-    color = models.CharField( max_length=50)
-    ship_date = models.DateTimeField( auto_now=False, auto_now_add=False, default= None)
-    ship_status = models.CharField(choices= shipstatus_choice, max_length=50)
+    color = models.CharField( max_length=50 , default="")
+    ship_date = models.DateTimeField( auto_now=False, auto_now_add=False, default= None, null= True, blank=True)
+    ship_status = models.CharField(choices= shipstatus_choice, max_length=50, default="")
     order_approve = models.BooleanField(default=False)
     
     def __str__(self):
         return f"{self.product} - {self.quantity} -{self.order}"
 
 class Cart(BaseModel):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)  
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE,  blank= True, null=True)  
     def __str__(self):
         return self.customer
 
 class CartDetail(BaseModel):
-    cart = models.ForeignKey(Cart, on_delete=models.CASCADE)    
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE,  blank= True, null=True)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, blank= True, null=True)
     quantity = models.IntegerField(default="")
 
 class Likes (BaseModel):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE,  blank= True, null=True)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE,  blank= True, null=True)
     like_status = models.BooleanField(default= False)
 
