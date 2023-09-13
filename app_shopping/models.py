@@ -25,7 +25,7 @@ class Admin(BaseModel):
     account_status = models.BooleanField(default=True)
     
     def __str__(self):
-        return f"{self.f_name} {self.l_name}"
+        return f"{self.first_name} {self.last_name}"
 
 class AdminWhitelistToken (models.Model):
     admin = models.ForeignKey(Admin, on_delete=models.CASCADE, blank= True, null=True)
