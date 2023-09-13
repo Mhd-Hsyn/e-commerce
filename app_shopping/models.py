@@ -44,7 +44,7 @@ class ProductCategory(BaseModel):
     description = models.TextField(default="")
     
     def __str__(self):
-        return self.name
+        return str(self.name)
     
 class Product_SubCategory(BaseModel):
     category = models.ForeignKey(ProductCategory, on_delete=models.CASCADE, blank=True, null= True)
@@ -52,7 +52,7 @@ class Product_SubCategory(BaseModel):
     description = models.TextField(default="")
     
     def __str__(self):
-        return self.name
+        return str(self.name)
 
     
 class Seller(BaseModel):
@@ -75,7 +75,7 @@ class Seller(BaseModel):
     admin_allow_status = models.BooleanField(default= False)
     
     def __str__(self):
-        return self.email
+        return str(self.email)
 
 class SellerWhitelistToken(models.Model):
     seller = models.ForeignKey(Seller, on_delete=models.CASCADE, blank= True, null=True)
@@ -83,7 +83,7 @@ class SellerWhitelistToken(models.Model):
     created_at = models.DateTimeField( auto_now_add=False, blank= True, null=True)
     
     def __str__(self) :
-        return self.seller
+        return str(self.seller)
     
 class Product(BaseModel):
     seller = models.ForeignKey(Seller, on_delete=models.CASCADE,  blank= True, null=True)
@@ -103,14 +103,14 @@ class Product(BaseModel):
     admin_allow_status = models.BooleanField(default= True)
     
     def __str__(self):
-        return f"{self.title} - {self.seller.email}"
+        return str(f"{self.title} - {self.seller.email}")
     
 class ProductImages(BaseModel):
     product = models.ForeignKey(Product, on_delete=models.CASCADE,  blank= True, null=True)
     image = models.ImageField( upload_to="ProductImages/", height_field=None, width_field=None, max_length=None, default= None, null= True, blank=True)
     
     def __str__(self):
-        return f"{self.product.title} - {str(self.image.url)}"    
+        return str(f"{self.product.title} - {str(self.image.url)}")
     
 class Sale(BaseModel):
     seller = models.ForeignKey(Seller, on_delete=models.CASCADE,  blank= True, null=True)
@@ -137,7 +137,7 @@ class Customer(BaseModel):
     admin_allow_status = models.BooleanField(default=True)
     
     def __str__(self):
-        return self.email
+        return str(self.email)
 
 class CustomerWhitelistToken(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, blank=True, null =True)
@@ -145,7 +145,7 @@ class CustomerWhitelistToken(models.Model):
     created_at = models.DateTimeField( auto_now_add=False, null=True, blank=True)
 
     def __str__(self):
-        return self.customer
+        return str(self.customer)
 
 class Address(BaseModel):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE,  blank= True, null=True)
@@ -154,7 +154,7 @@ class Address(BaseModel):
     city = models.CharField( max_length=50 , default="")
     
     def __str__(self):
-        return f"{self.title} - {self.customer}"
+        return str(f"{self.title} - {self.customer}")
     
 class Orders(BaseModel):
     payment_choices = [
@@ -169,7 +169,7 @@ class Orders(BaseModel):
     payment_date = models.DateTimeField( auto_now=False, auto_now_add=False, blank=True, null=True)  # payment date added only when payment status becomes True
     
     def __str__(self) :
-        return f"{self.payment_status} - {self.customer}"
+        return str(f"{self.payment_status} - {self.customer}")
 
 class OrderDetail(BaseModel):
     shipstatus_choice = [
@@ -189,12 +189,12 @@ class OrderDetail(BaseModel):
     order_approve = models.BooleanField(default=False)
     
     def __str__(self):
-        return f"{self.product} - {self.quantity} -{self.order}"
+        return str(f"{self.product} - {self.quantity} -{self.order}")
 
 class Cart(BaseModel):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE,  blank= True, null=True)  
     def __str__(self):
-        return self.customer
+        return str(self.customer)
 
 class CartDetail(BaseModel):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE,  blank= True, null=True)
