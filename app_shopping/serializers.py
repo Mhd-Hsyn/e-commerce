@@ -6,7 +6,7 @@ from passlib.hash import django_pbkdf2_sha256 as handler
 class AdminSerializer(serializers.ModelSerializer):
     class Meta:
         model = Admin
-        fields = "__all__"
+        fields = ["first_name", "last_name", "email", "password", "image", "phone"]
     
     def validate(self, attrs):
         requireFeilds_status = uc.requireFeildValidation(self.context['reqData'], self.context["requireFeilds"])
@@ -29,7 +29,10 @@ class AdminSerializer(serializers.ModelSerializer):
 class AdminLoginSerializer(serializers.Serializer):
     email = serializers.CharField()
     password = serializers.CharField(write_only=True)
-        
+    class Meta:
+        model = Admin
+        fields = ["email", "password"]
+            
     def validate(self, attrs):
         email = attrs.get("email")
         password = attrs.get("password")
@@ -41,3 +44,14 @@ class AdminLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError(f"{check_pass['message']}")
         attrs['fetch_user'] = fetch_user
         return attrs
+    
+class AdminForgotPassSerializer(serializers.Serializer):
+    class Meta:
+        model = Admin
+        feilds = ["password","email"]
+    def validate(self, attrs):
+        email = attrs.get ("email")
+        if not uc.checkEmailPattern(email):
+            raise serializers.ValidationError("Incorrect email patterm")
+        return attrs
+        
