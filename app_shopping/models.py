@@ -48,7 +48,7 @@ class Product_SubCategory(BaseModel):
     description = models.TextField(default="")
     
     def __str__(self):
-        return str(self.name)
+        return str(f"{self.name} - {self.category.name}")
 
     
 class Seller(BaseModel):
