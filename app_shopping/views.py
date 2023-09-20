@@ -4,9 +4,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from decouple import config
 from operator import itemgetter
-from passlib.hash import django_bcrypt_sha256 as handler
+from passlib.hash import django_pbkdf2_sha256 as handler
 from django.core.mail import send_mail
-from smtplib import SMTPException
 
 import random
 
@@ -56,12 +55,12 @@ class AdminAuthViewset(viewsets.ModelViewSet):
                     fetchuser.no_of_wrong_attempts = 0
                     fetchuser.account_status = True
                     fetchuser.save()
-                    return Response({"msg": "Login Successfully", "token": admin_token['token'], "payload": admin_token['payload']})
-                return Response ({"status": False, "message": f"Invalid Credentials {admin_token['message']}" })
+                    return Response({"status": True, "msg": "Login Successfully", "token": admin_token['token'], "payload": admin_token['payload']}, status= 200)
+                return Response ({"status": False, "message": f"Invalid Credentials {admin_token['message']}"}, status= 400)
             
-            return Response({"status": False, "msg" : ser.errors})
+            return Response({"status": False, "msg" : ser.errors}, status= 400)
         except Exception as e:
-            return Response ({"status": False, "error": str(e)})
+            return Response ({"status": False, "error": str(e)}, status= 400)
     
     @action(detail=False, methods=['POST'])
     def adminForgotPassSendMail(self, request):
@@ -81,7 +80,7 @@ class AdminAuthViewset(viewsets.ModelViewSet):
                     email_from = config('EMAIL_HOST_USER')
                     email_to = request.data['email']
                     send_mail(subject= subject, message= message,from_email= email_from, recipient_list= [email_to], fail_silently= True)
-                    return Response ({"status": True, "message": f"OTP send Successfully check your email {email_to}", "id": str(fetchuser.id)}, status= 200)
+                    return Response ({"status": True, "message": f"OTP send Successfully check your email {email_to}", "id": str(fetchuser.id)}, status= status.HTTP_200_OK)
                 return Response ({"status": False, "error": "No User found in this email"}, status= status.HTTP_404_NOT_FOUND)    
             return Response({"status": False, "error" : "email required"})    
         except Exception as e:
@@ -135,7 +134,7 @@ class AdminAuthViewset(viewsets.ModelViewSet):
                         if fetchuser.Otp == int(otp):
                             fetchuser.Otp = 0
                             fetchuser.save()
-                            return Response({"status": True, "message": "Otp verified . . . ", "id": str(fetchuser.id)}, status= 200)
+                            return Response({"status": True, "message": "Otp verified . . . ", "id": str(fetchuser.id)}, status= status.HTTP_200_OK)
                         else:
                             fetchuser.OtpCount += 1
                             fetchuser.save()
@@ -202,7 +201,6 @@ class AdminViewset(viewsets.ModelViewSet):
         try:
             email = request.auth['email']
             fetchuser = Admin.objects.filter(email = email).first()
-            
             if request.method == "GET":
                 payload = {
                     "id" : str(fetchuser.id),
