@@ -10,7 +10,9 @@ def adminGenerateToken(fetchuser):
             "id": str(fetchuser.id),
             "email":fetchuser.email,
             "iat": datetime.datetime.utcnow(),
-            "exp": datetime.datetime.utcnow() + datetime.timedelta(days=total_days),  
+            "exp": datetime.datetime.utcnow() + datetime.timedelta(days=total_days),
+            # "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=1),  
+              
         }
         detail_payload = {
             "id": str(fetchuser.id),
@@ -27,13 +29,17 @@ def adminGenerateToken(fetchuser):
         return {"status": False, "message": f"Error during generationg token {str(e)}"}
 
 # Logout
-def adminDeleteToken(fetchuser, request):
+def adminLogout_DeleteToken(fetchuser, request):
     try:
         token = request.META["HTTP_AUTHORIZATION"][7:]
-        
-        print(token)
         whitelist_token = AdminWhitelistToken.objects.filter(admin = fetchuser.id, token = token).first()
         whitelist_token.delete()
+        admin_all_tokens = AdminWhitelistToken.objects.filter(admin = fetchuser)
+        for fetch_token in admin_all_tokens:
+            try:
+                decode_token = jwt.decode(fetch_token.token, config('Admin_jwt_token'), "HS256")
+            except:    
+                fetch_token.delete()
         return True
     except Exception :
         return False
