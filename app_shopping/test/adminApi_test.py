@@ -1,9 +1,12 @@
+from passlib.hash import django_pbkdf2_sha256 as handler
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+
 from rest_framework.test import APIClient
 from rest_framework import status
 from django.urls import reverse
+
 from app_shopping.models import *
-from passlib.hash import django_pbkdf2_sha256 as handler
 
 
 class AdminAuthViewSet_TestCase(TestCase):
@@ -128,23 +131,23 @@ class AdminAuthViewSet_TestCase(TestCase):
 class AdminViewSet_TestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
-        password = handler.hash("abcd12345")
-        email = "syd.mhd.hsyn@gmail.com"
+        self.password = handler.hash("abcd12345")
+        self.email = "syd.mhd.hsyn@gmail.com"
         create_admin = Admin.objects.create(
             first_name = "Mohd",
             last_name = "Hsyn",
-            email = email,
+            email = self.email,
             phone = "12345678",
-            password = password,
+            password = self.password,
         )
         # first login to save the admin login credentials and token in db
         login_url = reverse("adminauth-adminLogin")
-        login_data = {"email": email, "password": "abcd12345"}
+        login_data = {"email": self.email, "password": "abcd12345"}
         # self.client.login(email = self.email, password = self.password)
         login_response = self.client.post(login_url, login_data)
         self.token = login_response.data['token']
         # check token sav in DB 
-        self.fetch_admin = Admin.objects.get(email = email)
+        self.fetch_admin = Admin.objects.get(email = self.email)
         fetch_token = AdminWhitelistToken.objects.get(admin= self.fetch_admin, token = self.token)
         self.assertEqual(fetch_token.token, self.token)
         
@@ -157,5 +160,215 @@ class AdminViewSet_TestCase(TestCase):
     def test_adminProfile(self):
         url = reverse("admin-adminProfile")
         self.client.credentials(HTTP_AUTHORIZATION = f"Bearer {self.token}")
+        # Get Admin
         response = self.client.get(url)
-        print(response.content)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        res_data = response.json()
+        self.assertEqual(res_data['status'], True)
+        self.assertEqual(res_data['data']['email'], self.email)
+        self.assertEqual(res_data['data']['image'], "/media/AdminImage/dummyadmin.png")
+        # PUT   Update-Admin
+        # open the image
+        with open(r"D:\Python\Django\2_practice\_4_Ecomerce_shopping_app\ecomerce\media\CustomerImage\dummycustomer.png", "rb") as img:
+            image_content = img.read()
+            
+        image = SimpleUploadedFile("new_profileimage.png", image_content, content_type="image/png")
+        data = {
+            "first_name" : "SYED M",
+            "last_name" : "Hussain",
+            "phone" : "99999999",
+            "image" : image
+        }
+        update_admin_response = self.client.put(
+            url, 
+            data , 
+            format = "multipart", 
+            HTTP_AUTHORIZATION=f"Bearer {self.token}"
+            )
+        self.assertEqual(update_admin_response.status_code, status.HTTP_200_OK)
+        update_res_data = update_admin_response.json()
+        self.assertEqual(update_res_data['data']['first_name'], "SYED M")
+        
+        # Check database Updated or not
+        fetch_admin = Admin.objects.get(id = self.fetch_admin.id)
+        self.assertEqual(fetch_admin.first_name, "SYED M")
+        self.assertEqual(fetch_admin.last_name, "Hussain")
+        self.assertEqual(fetch_admin.phone, "99999999")
+        self.assertNotEqual(fetch_admin.image, "/media/AdminImage/dummyadmin.png")
+        
+    def test_adminChangePass(self):
+        url = reverse("admin-adminChangePass")
+        data = {
+            "oldpassword": "abcd12345",
+            "newpassword" : "12345678"
+        }
+        response = self.client.post(
+            url, 
+            data,
+            HTTP_AUTHORIZATION = f"Bearer {self.token}"
+            )
+        res_data = response.json()
+        self.assertEqual(res_data['status'], True)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # check in db
+        fetch_admin = Admin.objects.get(id = self.fetch_admin.id)
+        self.assertTrue(handler.verify("12345678", fetch_admin.password))
+        self.assertFalse(handler.verify("abcd12345", fetch_admin.password))
+
+class AdminProduct_TestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.email = "syd.mhd,hsyn@gmail.com"
+        admin = Admin.objects.create(
+            first_name = "Mohd",
+            last_name = "Hsyn",
+            email = self.email,
+            phone = "12345678",
+            password = handler.hash("abcd12345"),
+        )
+        login_data = {
+            "email" : self.email,
+            "password": "abcd12345"
+        }
+        login_url = reverse("adminauth-adminLogin")
+        login_response = self.client.post(
+            path = login_url,
+            data= login_data
+        )
+        self.token = login_response.json()['token']
+    
+    # POST 
+    def test_ProductCategoryAdd(self):
+        url = reverse("admin-ProductCategoryApi")
+        data = {
+            "name": "Mens",
+            "description": "All Branded Mens category with high Quality"
+        }
+        response = self.client.post(
+            path= url,
+            data= data,
+            format = "json",
+            HTTP_AUTHORIZATION = f"Bearer {self.token}"
+        )
+        res_data = response.json()
+        self.assertEqual(res_data['status'], True)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # check DB
+        fetch_category = ProductCategory.objects.get(name = "Mens")
+        self.assertEqual(fetch_category.name, "Mens")
+        self.assertEqual(fetch_category.description, "All Branded Mens category with high Quality")
+    
+    # Get all product
+    def test_ProductCategoryGET(self):
+        url = reverse("admin-ProductCategoryApi")
+        # Add min 2 categories
+        category =ProductCategory.objects.create(
+            name = "Mens",
+            description =  "Branded Mens category with high Quality"
+        )
+        self.client.post(
+            path =  reverse("admin-ProductCategoryApi"),
+            data= {
+                "name": "Womens", 
+                "description": "All womens category"
+                },
+            format = "json",
+            HTTP_AUTHORIZATION = f"Bearer {self.token}"
+        )
+        
+        response = self.client.get(
+            path= url,
+            HTTP_AUTHORIZATION = f"Bearer {self.token}"
+            )
+        # print(response.content)
+        res_data = response.json()
+        self.assertEqual(res_data['status'], True)
+        self.assertEqual(len(res_data['data']), 2)
+    
+    # Update the category
+    def test_CategoryUpdate(self):
+        url = reverse("admin-ProductCategoryApi")
+            # firstly Add 2 category
+        self.client.credentials(HTTP_AUTHORIZATION = f"Bearer {self.token}")
+        self.client.post(
+            path= reverse("admin-ProductCategoryApi"),
+            data = {
+                "name": "Mens", 
+                "description": "All MENS Category"
+            },
+        )
+        self.client.post(
+            path= reverse("admin-ProductCategoryApi"),
+            data = {
+                "name": "Womens", 
+                "description": "All womens category"
+            },
+        )
+            #  Secondly fetch id of category
+        get_response = self.client.get(path= url)
+        get_res_data = get_response.json()
+        # print(get_res_data)
+        categories = get_res_data['data'] # get data from response / remove status
+        categories_id = []
+        for category in categories:
+            categories_id.append(category["id"])
+        
+        # Update these categories hit API 
+        response = self.client.put(
+            path= url,
+            data = {
+                "id" : categories_id[0],
+                "name" : "Updated Mens Category",
+                "description": "I update MEN cateogory"
+            },
+            format ="json"
+        ) 
+        res_data = response.json()
+        self.assertEqual(res_data['status'], True)
+        self.assertEqual(res_data['data']['name'], "Updated Mens Category")
+        # check DB 
+        fetch_category = ProductCategory.objects.get(id= categories_id[0])
+        self.assertEqual(fetch_category.name, "Updated Mens Category")
+        self.assertEquals(fetch_category.description, "I update MEN cateogory")
+        
+        
+    def test_deleteCategory(self):
+        url = reverse('admin-ProductCategoryApi')
+        self.client.credentials(HTTP_AUTHORIZATION = f"Bearer {self.token}")
+        # first post category
+        self.client.post(
+            path= url,
+            data= {
+                "name":"Mens",
+                "description": "Mens All Category"
+            },
+            format = 'json'
+        )
+        self.client.post(
+            path= url,
+            data= {
+                "name":"Womens",
+                "description": "Womens Category"
+            },
+            format = 'json'
+        )
+        # second   =>  get all category and id
+        categories_response = self.client.get(path=url)
+        json_response = categories_response.json()
+        data = json_response['data']
+        category_id = []
+        for category in  data:
+            category_id.append(category['id'])
+        
+        # Delete the category
+        response = self.client.delete(
+            path= url,
+            data= {
+                "id": category_id[0]
+            }
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        fetch_category = ProductCategory.objects.all()
+        self.assertEqual(fetch_category.count(), 1)
+        self.assertFalse(ProductCategory.objects.filter(name = "Mens", description =  "Mens All Category").first())
+        

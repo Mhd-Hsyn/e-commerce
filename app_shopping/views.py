@@ -188,9 +188,9 @@ class AdminViewset(viewsets.ModelViewSet):
     @action(detail=False, methods= ["GET"])
     def adminLogout(self, request):
         try:
-            token = request.auth
+            token = request.auth  # access from permission class after decode
             fetchuser = Admin.objects.filter(id = token["id"]).first()
-            adminDeleteToken(fetchuser, request)
+            adminLogout_DeleteToken(fetchuser, request)
             return Response ({"status": True, "message": "Logout Successfully"}, status= 200)
         except Exception as e:
             return Response({"status": False, "error": f"Something wrong {str(e)}"}, status= 400)
@@ -199,7 +199,8 @@ class AdminViewset(viewsets.ModelViewSet):
     @action(detail=False, methods=['GET', "PUT"])
     def adminProfile(self, request):
         try:
-            email = request.auth['email']
+            decoded_token = request.auth  # get decoded token from permission class
+            email = decoded_token['email']
             fetchuser = Admin.objects.filter(email = email).first()
             if request.method == "GET":
                 payload = {
@@ -228,8 +229,8 @@ class AdminViewset(viewsets.ModelViewSet):
                     "phone": fetchuser.phone,
                     "image": fetchuser.image.url,   
                     }
-                    return Response({"status": True ,"message": "Updated Successfully" ,"data": payload })   
-                return Response({"status": False, "error": requireFeilds_status['message']})    
+                    return Response({"status": True ,"message": "Updated Successfully" ,"data": payload }, status= status.HTTP_200_OK)   
+                return Response({"status": False, "error": requireFeilds_status['message']}, status= status.HTTP_400_BAD_REQUEST)    
         except Exception as e :
             return Response({"status": False , "error": str(e)}, status= 400)
     
@@ -246,11 +247,11 @@ class AdminViewset(viewsets.ModelViewSet):
                     if uc.checkpasslen(request.data['newpassword']):
                         fetchuser.password = handler.hash(request.data["newpassword"])
                         # delete old token
-                        adminDeleteToken(fetchuser, request)
+                        adminLogout_DeleteToken(fetchuser, request)
                         # generate new token
                         token = adminGenerateToken(fetchuser) 
                         fetchuser.save()
-                        return Response({"status": True, "message": "Password Successfully Changed", "token" : token["token"]})
+                        return Response({"status": True, "message": "Password Successfully Changed", "token" : token["token"]}, status = 200)
                     return Response({"status":False, "error":"New Password Length must be graterthan 8"}, status= 400)
                 return Response({"status":False, "error":"Old Password not verified"}, status= 400)
             return Response({"status":False, "error": feild_status['message']}, status= 400)
@@ -299,7 +300,7 @@ class AdminViewset(viewsets.ModelViewSet):
                     fetch_category = ProductCategory.objects.get(id = request.data["id"])
                     if fetch_category:
                         fetch_category.delete()
-                        return Response ({"status": True, "message": f"{request.data['id']} Category Deleted !!!"})
+                        return Response ({"status": True, "message": f"{request.data['id']} Category Deleted !!!"}, status=status.HTTP_200_OK)
                     return Response({"status": False, "message": "Category not exists"})
                 return Response({"status": False, "message": f"{validator['message']}"}, status= 400)
         except Exception as e:
