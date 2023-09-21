@@ -17,8 +17,8 @@ class AdminPermission(BasePermission):
             request.auth = decode_token
             return True
         except jwt.ExpiredSignatureError:
-            raise AuthenticationFailed("Session Expired !!")
+            raise AuthenticationFailed({"status": False,"error":"Session Expired !!"})
         except jwt.DecodeError:
-            raise AuthenticationFailed("Invalid token")
+            raise AuthenticationFailed({"status": False,"error":"Invalid token"})
         except Exception as e:
-            raise AuthenticationFailed("Need Login")
+            raise AuthenticationFailed({"status": False,"error":"Need Login"})
