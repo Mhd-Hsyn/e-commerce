@@ -4,9 +4,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from decouple import config
 from operator import itemgetter
-from passlib.hash import django_bcrypt_sha256 as handler
+from passlib.hash import django_pbkdf2_sha256 as handler
 from django.core.mail import send_mail
-from smtplib import SMTPException
 
 import random
 
@@ -33,11 +32,14 @@ class AdminAuthViewset(viewsets.ModelViewSet):
     def adminSignup(self, request):
         try:
             requireFeilds = ["first_name", "last_name", "email", "phone", "password"]
-            ser = AdminSerializer(data= request.data, context = {"reqData": request.data, "requireFeilds": requireFeilds})
-            if ser.is_valid():
-                ser.save()
-                return Response ({"status": True, "message" : "User created !!!" }, status=status.HTTP_201_CREATED)
-            return Response({"status": False, "message": ser.errors }, status=status.HTTP_400_BAD_REQUEST)
+            requireFeilds_status = uc.requireFeildValidation(request.data, requireFeilds)
+            if requireFeilds_status['status']:
+                ser = AdminSerializer(data= request.data)
+                if ser.is_valid():
+                    ser.save()
+                    return Response ({"status": True, "message" : "User created !!!" }, status=status.HTTP_201_CREATED)
+                return Response({"status": False, "message": ser.errors }, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"status": False, "message": requireFeilds_status['message'] }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response ({"status": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
@@ -53,12 +55,12 @@ class AdminAuthViewset(viewsets.ModelViewSet):
                     fetchuser.no_of_wrong_attempts = 0
                     fetchuser.account_status = True
                     fetchuser.save()
-                    return Response({"msg": "Login Successfully", "token": admin_token['token'], "payload": admin_token['payload']})
-                return Response ({"status": False, "message": f"Invalid Credentials {admin_token['message']}" })
+                    return Response({"status": True, "msg": "Login Successfully", "token": admin_token['token'], "payload": admin_token['payload']}, status= 200)
+                return Response ({"status": False, "message": f"Invalid Credentials {admin_token['message']}"}, status= 400)
             
-            return Response({"status": False, "msg" : ser.errors})
+            return Response({"status": False, "msg" : ser.errors}, status= 400)
         except Exception as e:
-            return Response ({"status": False, "error": str(e)})
+            return Response ({"status": False, "error": str(e)}, status= 400)
     
     @action(detail=False, methods=['POST'])
     def adminForgotPassSendMail(self, request):
@@ -78,7 +80,7 @@ class AdminAuthViewset(viewsets.ModelViewSet):
                     email_from = config('EMAIL_HOST_USER')
                     email_to = request.data['email']
                     send_mail(subject= subject, message= message,from_email= email_from, recipient_list= [email_to], fail_silently= True)
-                    return Response ({"status": True, "message": f"OTP send Successfully check your email {email_to}", "id": str(fetchuser.id)}, status= 200)
+                    return Response ({"status": True, "message": f"OTP send Successfully check your email {email_to}", "id": str(fetchuser.id)}, status= status.HTTP_200_OK)
                 return Response ({"status": False, "error": "No User found in this email"}, status= status.HTTP_404_NOT_FOUND)    
             return Response({"status": False, "error" : "email required"})    
         except Exception as e:
@@ -132,7 +134,7 @@ class AdminAuthViewset(viewsets.ModelViewSet):
                         if fetchuser.Otp == int(otp):
                             fetchuser.Otp = 0
                             fetchuser.save()
-                            return Response({"status": True, "message": "Otp verified . . . ", "id": str(fetchuser.id)}, status= 200)
+                            return Response({"status": True, "message": "Otp verified . . . ", "id": str(fetchuser.id)}, status= status.HTTP_200_OK)
                         else:
                             fetchuser.OtpCount += 1
                             fetchuser.save()
@@ -186,10 +188,10 @@ class AdminViewset(viewsets.ModelViewSet):
     @action(detail=False, methods= ["GET"])
     def adminLogout(self, request):
         try:
-            token = request.auth
+            token = request.auth  # access from permission class after decode
             fetchuser = Admin.objects.filter(id = token["id"]).first()
-            adminDeleteToken(fetchuser, request)
-            return Response ({"status": False, "message": "Logout Successfully"}, status= 200)
+            adminLogout_DeleteToken(fetchuser, request)
+            return Response ({"status": True, "message": "Logout Successfully"}, status= 200)
         except Exception as e:
             return Response({"status": False, "error": f"Something wrong {str(e)}"}, status= 400)
     
@@ -197,9 +199,9 @@ class AdminViewset(viewsets.ModelViewSet):
     @action(detail=False, methods=['GET', "PUT"])
     def adminProfile(self, request):
         try:
-            email = request.auth['email']
+            decoded_token = request.auth  # get decoded token from permission class
+            email = decoded_token['email']
             fetchuser = Admin.objects.filter(email = email).first()
-            
             if request.method == "GET":
                 payload = {
                     "id" : str(fetchuser.id),
@@ -227,8 +229,8 @@ class AdminViewset(viewsets.ModelViewSet):
                     "phone": fetchuser.phone,
                     "image": fetchuser.image.url,   
                     }
-                    return Response({"status": True ,"message": "Updated Successfully" ,"data": payload })   
-                return Response({"status": False, "error": requireFeilds_status['message']})    
+                    return Response({"status": True ,"message": "Updated Successfully" ,"data": payload }, status= status.HTTP_200_OK)   
+                return Response({"status": False, "error": requireFeilds_status['message']}, status= status.HTTP_400_BAD_REQUEST)    
         except Exception as e :
             return Response({"status": False , "error": str(e)}, status= 400)
     
@@ -245,13 +247,115 @@ class AdminViewset(viewsets.ModelViewSet):
                     if uc.checkpasslen(request.data['newpassword']):
                         fetchuser.password = handler.hash(request.data["newpassword"])
                         # delete old token
-                        adminDeleteToken(fetchuser, request)
+                        adminLogout_DeleteToken(fetchuser, request)
                         # generate new token
                         token = adminGenerateToken(fetchuser) 
                         fetchuser.save()
-                        return Response({"status": True, "message": "Password Successfully Changed", "token" : token["token"]})
+                        return Response({"status": True, "message": "Password Successfully Changed", "token" : token["token"]}, status = 200)
                     return Response({"status":False, "error":"New Password Length must be graterthan 8"}, status= 400)
                 return Response({"status":False, "error":"Old Password not verified"}, status= 400)
             return Response({"status":False, "error": feild_status['message']}, status= 400)
         except Exception as e:
-            return Response({"status": False, "error": str(e)}, status= 400)  
+            return Response({"status": False, "error": str(e)}, status= 400)
+        
+        
+    @action(detail= False, methods=['POST','GET','PUT','DELETE'])
+    def ProductCategoryApi(self, request):
+        try:
+            # Get Product category
+            if request.method == "GET":
+                category = ProductCategory.objects.all()
+                ser = ProductCategorySerializer(category, many = True)
+                return Response({"status": True, "data": ser.data}, status= 200)
+            # Add Product Category
+            elif request.method == "POST":
+                requiredFeilds = ["name", "description"]
+                validator = uc.requireFeildValidation(request.data, requiredFeilds)
+                if validator['status']:
+                    ser = ProductCategorySerializer(data= request.data)
+                    if ser.is_valid():
+                        ser.save()
+                        return Response({"status": True, "message": f"Successfully Added {request.data['name']} Category "}, status= 200)
+                    return Response({"status": False, "error" : str(ser.errors)}, status= 400)
+                return Response({"status": False, "error": validator['message']}, status= 400)
+            #  edit Product Category
+            elif request.method == "PUT":
+                requiredFeilds = ['id','name','description']
+                validator = uc.requireFeildValidation(reqData= request.data, requireFeilds= requiredFeilds)
+                if validator['status']:
+                    fetch_category = ProductCategory.objects.get(id = request.data['id'])
+                    if fetch_category:
+                        fetch_category.name = request.data['name']
+                        fetch_category.description = request.data["description"]
+                        fetch_category.save()
+                        ser = ProductCategorySerializer(fetch_category)
+                        return Response({"status": True, "message": f"{fetch_category.name} Category Updated Successfully", "data" : ser.data}, status= 200)
+                    return Response({"status": False, "message": "Category not exists"})
+                return Response({"status": False, "message": f"{validator['message']}"}, status= 400)
+            # delete product category
+            elif request.method == 'DELETE':
+                requiredFeilds = ["id"]
+                validator = uc.requireFeildValidation(request.data, requiredFeilds)
+                if validator["status"]:
+                    fetch_category = ProductCategory.objects.get(id = request.data["id"])
+                    if fetch_category:
+                        fetch_category.delete()
+                        return Response ({"status": True, "message": f"{request.data['id']} Category Deleted !!!"}, status=status.HTTP_200_OK)
+                    return Response({"status": False, "message": "Category not exists"})
+                return Response({"status": False, "message": f"{validator['message']}"}, status= 400)
+        except Exception as e:
+            return Response({"status": False, "error": str(e)}, status=400)
+        
+        #  Produuct Sub Category
+    @action(detail=True, methods=["GET", "POST", "PUT", "DELETE"])
+    def ProductSubCategoryApi(self, request, pk = None):
+        try:
+            # Get Product Sub category needs pk id of main Product category to get all sub-category  
+            if request.method == "GET":
+                category = ProductCategory.objects.filter(id = pk).first()
+                if category is not None:
+                    sub_category = Product_SubCategory.objects.filter(category = category)
+                    ser = AddProductSubCategorySerializer(sub_category, many = True)
+                    return Response ({"status": True, "category": category.name ,"data": ser.data}, status= 200)
+                return Response({"status": False, "error": "Main Category not exist"}, status= 404)
+                
+            # Post / Add Product Sub Category  needs pk id of main Product category to add in sub-category
+            elif request.method == "POST":
+                requiredFeilds = ["name", "description"]
+                validator = uc.requireFeildValidation(request.data, requiredFeilds)
+                if validator["status"]:
+                    ser = AddProductSubCategorySerializer(data = request.data, context = {"category_id": pk})
+                    if ser.is_valid():
+                        sub_category = ser.save()
+                        return Response({"status": True, "message": f"{sub_category.name} Successfully added to {sub_category.category.name} Category  "})
+                    return Response({"status": False, "error": str(ser.errors)}, status= 400)
+                return Response({"status": False, "error": validator["message"]}, status=400)
+            # Put / Edit product Sub Category
+            # needs pk id of sub category to update the sub category
+            elif request.method == "PUT":
+                requiredFeilds = ["category_id","name", "description"]
+                validator = uc.requireFeildValidation(request.data, requiredFeilds)
+                if validator["status"]:
+                    fetch_category = ProductCategory.objects.filter(id = request.data["category_id"]).first()
+                    fetch_sub_category = Product_SubCategory.objects.filter(id = pk).first()
+                    if fetch_category:
+                        if fetch_sub_category:
+                            fetch_sub_category.category = fetch_category
+                            fetch_sub_category.name = request.data["name"]
+                            fetch_sub_category.description = request.data["description"]
+                            fetch_sub_category.save()
+                            return Response ({"status": True, "message": f"{fetch_sub_category.name} Successfully changed in {fetch_sub_category.category.name} Category"}, status= 200)
+                        return Response({"status": False, "error": f"Sub Category id not exist"}, status= 404)
+                    return Response({"status": False, "error": f"Main Category id not exist"}, status= 404)
+                return Response ({"status": False, "error": f"{validator['message']}"}, status= 400)
+            # Delete Product Sub Category
+            # needs pk id of sub category to delete
+            elif request.method == "DELETE":
+                fetch_sub_category = Product_SubCategory.objects.filter(id = pk).first()
+                if fetch_sub_category:
+                    fetch_sub_category.delete()
+                    return Response ({"status": True, "message": f"{fetch_sub_category.name} Deleted Successfully from {fetch_sub_category.category.name} Category !!!"}, status= 200)
+                return Response({"status": False, "error": f"Sub Category id not exist"}, status= 404)
+        except Exception as e:
+            return Response({"status": False, "error": str(e)}, status= 400)
+    

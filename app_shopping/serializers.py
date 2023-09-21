@@ -9,9 +9,6 @@ class AdminSerializer(serializers.ModelSerializer):
         fields = ["first_name", "last_name", "email", "password", "image", "phone"]
     
     def validate(self, attrs):
-        requireFeilds_status = uc.requireFeildValidation(self.context['reqData'], self.context["requireFeilds"])
-        if not requireFeilds_status["status"] :
-            raise serializers.ValidationError({"error": requireFeilds_status["message"]})
         pass_status = uc.checkpasslen(attrs['password'])
         if not pass_status:
             raise serializers.ValidationError("Password Length must be greaterthan 8")
@@ -48,10 +45,33 @@ class AdminLoginSerializer(serializers.Serializer):
 class AdminForgotPassSerializer(serializers.Serializer):
     class Meta:
         model = Admin
-        feilds = ["password","email"]
+        fields = ["password","email"]
     def validate(self, attrs):
         email = attrs.get ("email")
         if not uc.checkEmailPattern(email):
             raise serializers.ValidationError("Incorrect email patterm")
         return attrs
-        
+
+
+class ProductCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductCategory
+        fields = ["id","name", "description"]
+    def create(self, validated_data):
+        return super().create(validated_data)
+
+
+class AddProductSubCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product_SubCategory
+        fields = ["id", "category", "name", "description"] 
+    def create(self, validated_data):
+        category_id = self.context["category_id"]
+        name = validated_data["name"]
+        description = validated_data["description"]
+        fetch_category = ProductCategory.objects.get(id = category_id)
+        if not fetch_category:
+            raise serializers.ValidationError("Category doesnt exists")
+        sub_category = Product_SubCategory.objects.create(category = fetch_category, name= name, description = description)
+         
+        return sub_category
