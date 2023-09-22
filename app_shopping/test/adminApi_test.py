@@ -215,7 +215,7 @@ class AdminViewSet_TestCase(TestCase):
         self.assertTrue(handler.verify("12345678", fetch_admin.password))
         self.assertFalse(handler.verify("abcd12345", fetch_admin.password))
 
-class AdminProduct_TestCase(TestCase):
+class AdminProductCategory_TestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.email = "syd.mhd,hsyn@gmail.com"
@@ -371,4 +371,144 @@ class AdminProduct_TestCase(TestCase):
         fetch_category = ProductCategory.objects.all()
         self.assertEqual(fetch_category.count(), 1)
         self.assertFalse(ProductCategory.objects.filter(name = "Mens", description =  "Mens All Category").first())
+     
         
+class AdminProductSubCat_TestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        admin_resp = self.client.post(
+            path= reverse("adminauth-adminSignup"),
+            data= {
+                "first_name" : "S Mhd",
+                "last_name" : "Hsyn",
+                "phone" : "03242145",
+                "email" : "syd.mhd.hsyn@gmail.com",
+                "password" : "abcd1234",
+            },
+            format= 'json'
+        )
+        admin_login_response = self.client.post(
+            path= reverse("adminauth-adminLogin"),
+            data= {
+                "email": "syd.mhd.hsyn@gmail.com",
+                "password": "abcd1234"
+            },
+            format= 'json'
+        )
+        json_data = admin_login_response.json()
+        self.token = json_data['token']
+        
+        categories = [
+            {"name": "Mens", "description": "Mens all categppry"},
+            {"name": "Women", "description": "Women all category"},
+            {"name": "others", "description": "others category"}
+        ]
+        for category in categories:
+            self.client.post(
+                path= reverse('admin-ProductCategoryApi'),
+                data={
+                    "name" : category['name'],
+                    'description': category['description']
+                },
+                HTTP_AUTHORIZATION = f"Bearer {self.token}"
+            )
+        get_category_resp = self.client.get(
+            path= reverse("admin-ProductCategoryApi"),
+            HTTP_AUTHORIZATION = f"Bearer {self.token}"
+            )
+        self.get_category = get_category_resp.json()['data']
+        self.categoryList_id = []
+        for category in self.get_category:
+            self.categoryList_id.append(category['id'])
+        
+    def test_AddSubCategory(self):
+        url = reverse("admin-ProductSubCategoryApi", kwargs={"pk": self.categoryList_id[1]})
+        self.client.credentials(HTTP_AUTHORIZATION = f"Bearer {self.token}")
+        response = self.client.post(
+            path= url,
+            data={
+                "name" : "Jewlery",
+                "description" : "All branded womens jewlerry"
+            }
+        )
+        res_data = response.json()
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_data['status'], True)
+        self.assertEqual(res_data['category'], "Women")
+        self.assertEqual(res_data['sub_category'], "Jewlery")
+    
+    def test_GetsubCategory(self):
+        
+        url = reverse("admin-ProductSubCategoryApi", kwargs={"pk": self.categoryList_id[1]})
+        self.client.credentials(HTTP_AUTHORIZATION = f"Bearer {self.token}")
+        self.client.post(
+            path= url,
+            data={
+                "name" : "Jewlery",
+                "description" : "All branded womens jewlerry"
+            }
+        )
+        response = self.client.get(url)
+        res_data = response.json()
+        self.assertEqual(res_data['status'], True)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_data['category'], "Women")    
+    
+    def test_UpdateSubCategory(self):
+        self.client.credentials(HTTP_AUTHORIZATION = f"Bearer {self.token}")
+        self.client.post(
+            path= reverse("admin-ProductSubCategoryApi", kwargs= {"pk" : self.categoryList_id[1]}),
+            data={
+                "name" : "Jewlery",
+                "description" : "All branded womens jewlerry"
+            }
+        )
+        get_subcategory = self.client.get(path= reverse("admin-ProductSubCategoryApi", kwargs= {"pk" : self.categoryList_id[1]}))
+        # print(get_subcategory.content)
+        res_data_getSubCat = get_subcategory.json()['data']
+        sub_cat_id = ""
+        cat_id = ""
+        for data in res_data_getSubCat:
+            sub_cat_id = data['id']
+            cat_id = data['category']
+        
+        update_response = self.client.put(
+            path= reverse("admin-ProductSubCategoryApi", kwargs={"pk": sub_cat_id}),
+            data= {
+                "name":  "Updated_Jewlery",
+                "description" : "I update the jewlery",
+                "category_id": cat_id
+            }
+        )
+        res_data_updated = update_response.json()
+        self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_data_updated['status'], True)
+        # check DB
+        fetch_sub_cat = Product_SubCategory.objects.filter(id = sub_cat_id).first()
+        self.assertEqual(fetch_sub_cat.name, "Updated_Jewlery")
+        self.assertEqual(fetch_sub_cat.description, "I update the jewlery")
+        
+    
+    def test_deleteSubCategory(self):
+        self.client.credentials(HTTP_AUTHORIZATION = f"Bearer {self.token}")
+        self.client.post(
+            path= reverse("admin-ProductSubCategoryApi", kwargs= {"pk" : self.categoryList_id[1]}),
+            data={
+                "name" : "Jewlery",
+                "description" : "All branded womens jewlerry"
+            }
+        )
+        get_subcategory = self.client.get(path= reverse("admin-ProductSubCategoryApi", kwargs= {"pk" : self.categoryList_id[1]}))
+        # print(get_subcategory.content)
+        res_data_getSubCat = get_subcategory.json()['data']
+        sub_cat_id = ""
+        for data in res_data_getSubCat:
+            sub_cat_id = data['id']
+        
+        response = self.client.delete(
+            path= reverse("admin-ProductSubCategoryApi", kwargs={"pk": sub_cat_id})
+        )
+        res_data = response.json()
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_data['status'],True)
+        self.assertFalse(Product_SubCategory.objects.filter(id = sub_cat_id).first()) 

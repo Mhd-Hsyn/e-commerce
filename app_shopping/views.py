@@ -327,7 +327,7 @@ class AdminViewset(viewsets.ModelViewSet):
                     ser = AddProductSubCategorySerializer(data = request.data, context = {"category_id": pk})
                     if ser.is_valid():
                         sub_category = ser.save()
-                        return Response({"status": True, "message": f"{sub_category.name} Successfully added to {sub_category.category.name} Category  "})
+                        return Response({"status": True, "message": f"{sub_category.name} Successfully added to {sub_category.category.name} Category", "category": sub_category.category.name, "sub_category": sub_category.name}, status=200)
                     return Response({"status": False, "error": str(ser.errors)}, status= 400)
                 return Response({"status": False, "error": validator["message"]}, status=400)
             # Put / Edit product Sub Category
